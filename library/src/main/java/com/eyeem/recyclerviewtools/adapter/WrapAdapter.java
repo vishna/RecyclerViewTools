@@ -1,6 +1,7 @@
 package com.eyeem.recyclerviewtools.adapter;
 
 import android.os.Build;
+import android.support.annotation.NonNull;
 import android.support.annotation.RequiresApi;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -142,10 +143,12 @@ public class WrapAdapter
       }
 
       if (isHeaderViewType(viewType)) {
-         viewHolder = new HeaderFooterHolder(findViewByType(removeMask(viewType, HEADER_VIEW_TYPE_MASK), getHeaders(), headerTypes));
+         ViewFactory vf = findViewByType(removeMask(viewType, HEADER_VIEW_TYPE_MASK), getHeaders(), headerTypes);
+         viewHolder = new HeaderFooterHolder(vf.createInternal(parent));
          StaggeredLayoutManagerInternalUtils.setFullWidthLayoutParams(parent, viewHolder);
       } else if (isFooterViewType(viewType)) {
-         viewHolder = new HeaderFooterHolder(findViewByType(removeMask(viewType, FOOTER_VIEW_TYPE_MASK), getFooters(), footerTypes));
+         ViewFactory vf = findViewByType(removeMask(viewType, FOOTER_VIEW_TYPE_MASK), getFooters(), footerTypes);
+         viewHolder = new HeaderFooterHolder(vf.createInternal(parent));
          StaggeredLayoutManagerInternalUtils.setFullWidthLayoutParams(parent, viewHolder);
       } else if (isSectionViewType(viewType)) {
          viewHolder = sections.onCreateSectionViewHolder(parent, removeMask(viewType, SECTION_VIEW_TYPE_MASK));
@@ -296,12 +299,12 @@ public class WrapAdapter
       return val & ~mask; // ~ is bitwise not: NOT mask AND val
    }
 
-   private static View findViewByType(int viewType, List<View> views, SparseIntArray hashToType) {
-      for (int i = 0, size = views.size(); i < size; i++) {
-         View v = views.get(i);
-         int thisViewType = hashToType.get(v.hashCode());
+   private static ViewFactory findViewByType(int viewType, List<ViewFactory> viewFactories, SparseIntArray hashToType) {
+      for (int i = 0, size = viewFactories.size(); i < size; i++) {
+         ViewFactory vf = viewFactories.get(i);
+         int thisViewType = hashToType.get(vf.hashCode());
          if (thisViewType == viewType) {
-            return v;
+            return vf;
          }
       }
       return null;
@@ -309,41 +312,42 @@ public class WrapAdapter
 
    // Headers and Footers
    // ==============================================================================================
-   private List<View> headers; // Lazy initialised list of headers
-   private List<View> footers; // Lazy initialised list of footers
+   private List<ViewFactory> headers; // Lazy initialised list of headers
+   private List<ViewFactory> footers; // Lazy initialised list of footers
    private final AtomicInteger headerViewTypeGenerator = new AtomicInteger();
    private final AtomicInteger footerViewTypeGenerator = new AtomicInteger();
    private SparseIntArray headerTypes;
    private SparseIntArray footerTypes;
 
-   @Deprecated
-   public void addHeader(View v) {
-      if (!getHeaders().contains(v)) {
-         setDefaultLayoutParams(v);
-         getHeaders().add(v);
-         headerTypes.put(v.hashCode(), headerViewTypeGenerator.incrementAndGet());
+   public void addHeaderFactory(ViewFactory vf) {
+      addHeaderFactory(0, vf);
+   }
+
+   public void addHeaderFactory(int headerPosition, ViewFactory vf) {
+      if (!getHeaders().contains(vf)) {
+         getHeaders().add(headerPosition, vf);
+         headerTypes.put(vf.hashCode(), headerViewTypeGenerator.incrementAndGet());
          clearCache();
       }
+   }
+
+   @Deprecated
+   public void addHeader(View v) {
+      // TODO very bad factory
    }
 
    @Deprecated
    public void addHeader(int headerPosition, View v) {
-      if (!getHeaders().contains(v)) {
-         setDefaultLayoutParams(v);
-         getHeaders().add(headerPosition, v);
-         headerTypes.put(v.hashCode(), headerViewTypeGenerator.incrementAndGet());
-         clearCache();
-      }
+      // TODO very bad factory
    }
 
-   @Deprecated
-   public void removeHeader(View v, boolean autoNotify) {
+   public void removeHeaderFactory(ViewFactory vf, boolean autoNotify) {
       if (headers == null) return;
-      if (getHeaders().contains(v)) {
+      if (getHeaders().contains(vf)) {
          int position = -1;
-         if (autoNotify) position = getHeaders().indexOf(v);
-         if (getHeaders().remove(v)) {
-            headerTypes.delete(v.hashCode());
+         if (autoNotify) position = getHeaders().indexOf(vf);
+         if (getHeaders().remove(vf)) {
+            headerTypes.delete(vf.hashCode());
             clearCache();
             if (autoNotify && position >= 0)
                notifyItemRemoved(position);
@@ -352,12 +356,35 @@ public class WrapAdapter
    }
 
    @Deprecated
-   public void addFooter(View v) {
-      if (!getFooters().contains(v)) {
-         setDefaultLayoutParams(v);
-         getFooters().add(v);
-         footerTypes.put(v.hashCode(), footerViewTypeGenerator.incrementAndGet());
+   public void removeHeader(View v, boolean autoNotify) {
+      // TODO iterate somehow over very bad factories to find the bad view
+   }
+
+   public void addFooterFactory(ViewFactory vf) {
+      if (!getFooters().contains(vf)) {
+         getFooters().add(vf);
+         footerTypes.put(vf.hashCode(), footerViewTypeGenerator.incrementAndGet());
          clearCache();
+      }
+   }
+
+   @Deprecated
+   public void addFooter(View v) {
+      // TODO very bad factory
+   }
+
+   public void removeFooterFactory(ViewFactory vf, boolean autoNotify) {
+      if (footers == null) return;
+      if (getFooters().contains(vf)) {
+         int position = -1;
+         if (autoNotify) position = getFooters().indexOf(vf);
+         if (getFooters().remove(vf)) {
+            footerTypes.delete(vf.hashCode());
+            clearCache();
+            if (autoNotify && position >= 0) {
+               notifyItemRemoved(getHeaderCount() + sections.getSectionCount() + getWrappedCount() + position);
+            }
+         }
       }
    }
 
@@ -377,7 +404,7 @@ public class WrapAdapter
       }
    }
 
-   private void setDefaultLayoutParams(View v) {
+   private static void setDefaultLayoutParams(View v) {
       if (v.getLayoutParams() == null) {
          RecyclerView.LayoutParams lp = new RecyclerView.LayoutParams(RecyclerView.LayoutParams.MATCH_PARENT, RecyclerView.LayoutParams.WRAP_CONTENT);
          v.setLayoutParams(lp);
@@ -396,7 +423,7 @@ public class WrapAdapter
          return getItemCount() - position <= footerCount;
    }
 
-   private List<View> getHeaders() {
+   private List<ViewFactory> getHeaders() {
       if (headers == null)
          headers = new ArrayList<>();
       if (headerTypes == null)
@@ -404,7 +431,7 @@ public class WrapAdapter
       return headers;
    }
 
-   private List<View> getFooters() {
+   private List<ViewFactory> getFooters() {
       if (footers == null)
          footers = new ArrayList<>();
       if (footerTypes == null)
@@ -705,11 +732,13 @@ public class WrapAdapter
          return last;
       }
 
-      abstract View create(ViewGroup parent);
+      @NonNull
+      protected abstract View create(ViewGroup parent);
 
-      private View createInternal(ViewGroup parent) {
+      @NonNull private View createInternal(ViewGroup parent) {
          View view = create(parent);
          this.last = view;
+         setDefaultLayoutParams(view);
          return view;
       }
    }

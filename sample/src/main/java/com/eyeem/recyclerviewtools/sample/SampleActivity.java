@@ -1,6 +1,7 @@
 package com.eyeem.recyclerviewtools.sample;
 
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.widget.GridLayoutManager;
@@ -11,6 +12,7 @@ import android.support.v7.widget.Toolbar;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ImageView;
 
 import com.eyeem.recyclerviewtools.ItemOffsetDecoration;
@@ -92,7 +94,7 @@ public class SampleActivity extends BaseActivity implements Toolbar.OnMenuItemCl
 
       // Header
       if (config.useHeader) {
-         wrapAdapter.addHeader(new Header(this));
+         wrapAdapter.addHeaderFactory(new HeaderFactory());
       }
 
       // Load more scroller
@@ -181,6 +183,12 @@ public class SampleActivity extends BaseActivity implements Toolbar.OnMenuItemCl
          toast("Custom view on WrapAdapter");
       }
 
+   }
+
+   private static final class HeaderFactory extends WrapAdapter.ViewFactory {
+      @NonNull @Override protected View create(ViewGroup parent) {
+         return new Header(((View)parent).getContext());
+      }
    }
 
 }
