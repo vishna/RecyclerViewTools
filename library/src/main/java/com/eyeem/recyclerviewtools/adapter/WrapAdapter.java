@@ -1,5 +1,7 @@
 package com.eyeem.recyclerviewtools.adapter;
 
+import android.os.Build;
+import android.support.annotation.RequiresApi;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
@@ -20,6 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Base wrapping adapter that allows usage of headers, footers, sections and OnItemClick within a
  * {@link android.support.v7.widget.RecyclerView RecyclerView}.
  */
+@RequiresApi(api = Build.VERSION_CODES.HONEYCOMB_MR1)
 public class WrapAdapter
       extends RecyclerView.Adapter {
 
@@ -313,6 +316,7 @@ public class WrapAdapter
    private SparseIntArray headerTypes;
    private SparseIntArray footerTypes;
 
+   @Deprecated
    public void addHeader(View v) {
       if (!getHeaders().contains(v)) {
          setDefaultLayoutParams(v);
@@ -322,6 +326,7 @@ public class WrapAdapter
       }
    }
 
+   @Deprecated
    public void addHeader(int headerPosition, View v) {
       if (!getHeaders().contains(v)) {
          setDefaultLayoutParams(v);
@@ -331,6 +336,7 @@ public class WrapAdapter
       }
    }
 
+   @Deprecated
    public void removeHeader(View v, boolean autoNotify) {
       if (headers == null) return;
       if (getHeaders().contains(v)) {
@@ -345,6 +351,7 @@ public class WrapAdapter
       }
    }
 
+   @Deprecated
    public void addFooter(View v) {
       if (!getFooters().contains(v)) {
          setDefaultLayoutParams(v);
@@ -354,6 +361,7 @@ public class WrapAdapter
       }
    }
 
+   @Deprecated
    public void removeFooter(View v, boolean autoNotify) {
       if (footers == null) return;
       if (getFooters().contains(v)) {
@@ -688,4 +696,21 @@ public class WrapAdapter
       }
    }
    //endregion
+
+   public abstract static class ViewFactory {
+
+      private View last;
+
+      public View getLast() {
+         return last;
+      }
+
+      abstract View create(ViewGroup parent);
+
+      private View createInternal(ViewGroup parent) {
+         View view = create(parent);
+         this.last = view;
+         return view;
+      }
+   }
 }
