@@ -320,7 +320,11 @@ public class WrapAdapter
    private SparseIntArray footerTypes;
 
    public void addHeaderFactory(ViewFactory vf) {
-      addHeaderFactory(0, vf);
+      if (!getHeaders().contains(vf)) {
+         getHeaders().add(vf);
+         headerTypes.put(vf.hashCode(), headerViewTypeGenerator.incrementAndGet());
+         clearCache();
+      }
    }
 
    public void addHeaderFactory(int headerPosition, ViewFactory vf) {
